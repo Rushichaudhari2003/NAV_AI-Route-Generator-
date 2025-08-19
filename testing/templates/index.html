@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Real-Time Location Tracker</title>
+</head>
+<body>
+  <h2>Get Your Accurate Location via Browser</h2>
+  <button onclick="getLocation()">📍 Get Location</button>
+  <p id="status"></p>
+  <p id="coordinates"></p>
+
+  <script>
+    function getLocation() {
+      const status = document.getElementById("status");
+      const coords = document.getElementById("coordinates");
+
+      if (navigator.geolocation) {
+        status.innerText = "Getting your current location...";
+
+        navigator.geolocation.getCurrentPosition(
+          function(position) {
+            const lat = position.coords.latitude;
+            const lon = position.coords.longitude;
+
+            coords.innerText = `Latitude: ${lat} | Longitude: ${lon}`;
+
+            // Send to Flask server
+            fetch('/send-location', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ latitude: lat, longitude: lon })
+            })
+            .then(response => response.json())
+            .then(data => {
+              console.log(data);
+              status.innerText = "✅ Location sent successfully to the server.";
+            })
+            .catch(error => {
+              console.error("Error:", error);
+              status.innerText = "❌ Failed to send location.";
+            });
+          },
+          function(error) {
+            console.error(error);
+            status.innerText = "❌ Error getting location: " + error.message;
+          },
+          {
+            enableHighAccuracy: true
+          }
+        );
+      } else {
+        status.innerText = "Geolocation is not supported by this browser.";
+      }
+    }
+  </script>
+</body>
+</html>

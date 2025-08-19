@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Traffic Navigator</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <style>
+        :root {
+            --primary-color: #4361ee;
+            --secondary-color: #3f37c9;
+            --accent-color: #4895ef;
+            --text-color: #f8f9fa;
+            --background-dark: #212529;
+            --background-light: #f8f9fa;
+            --success-color: #4ade80;
+            --danger-color: #f43f5e;
+            --border-radius: 8px;
+            --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--background-light);
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .form-container {
+            background-color: var(--background-dark);
+            color: var(--text-color);
+            padding: 2rem;
+            width: 320px;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .map-container {
+            flex: 1;
+            position: relative;
+        }
+
+        h1 {
+            font-family: 'Segoe UI', sans-serif;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            font-size: 1.8rem;
+            color: var(--text-color);
+            border-bottom: 2px solid var(--accent-color);
+            padding-bottom: 0.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.2rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: var(--text-color);
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 0.75rem;
+            border-radius: var(--border-radius);
+            border: 1px solid #e0e0e0;
+            background-color: rgba(255, 255, 255, 0.9);
+            transition: all 0.3s ease;
+            font-size: 0.95rem;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 2px rgba(72, 149, 239, 0.2);
+        }
+
+        select {
+            width: 100%;
+            padding: 0.75rem;
+            border-radius: var(--border-radius);
+            border: 1px solid #e0e0e0;
+            background-color: rgba(255, 255, 255, 0.9);
+            font-size: 0.95rem;
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23333' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.7rem center;
+            background-size: 1em;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 2px rgba(72, 149, 239, 0.2);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 1.5rem;
+        }
+
+        .btn {
+            padding: 0.75rem 1.25rem;
+            border-radius: var(--border-radius);
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+            flex: 1;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--secondary-color);
+            transform: translateY(-2px);
+        }
+
+        .btn-clear {
+            background-color: transparent;
+            border: 1px solid #e0e0e0;
+            color: var(--text-color);
+            width: 42px;
+            height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+
+        .btn-clear:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .travel-info {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: var(--border-radius);
+            border-left: 4px solid var(--accent-color);
+        }
+
+        /* Traffic legend styles */
+        .traffic-legend {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background-color: white;
+            padding: 1rem;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            z-index: 1000;
+            max-width: 200px;
+        }
+
+        .traffic-legend h4 {
+            margin-bottom: 0.75rem;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 0.5rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 0.5rem 0;
+            font-size: 0.9rem;
+        }
+
+        .legend-color {
+            width: 24px;
+            height: 10px;
+            margin-right: 8px;
+            border-radius: 2px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .logo-icon {
+            font-size: 1.5rem;
+        }
+
+        /* Radio button styles */
+        input[type="radio"] {
+            margin-right: 5px;
+        }
+
+        #manual_location_group {
+            transition: all 0.3s ease;
+        }
+
+        .form-group label[for="use_current"],
+        .form-group label[for="use_manual"] {
+            font-weight: normal;
+            cursor: pointer;
+            display: inline-block;
+            margin-bottom: 5px;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+
+            .form-container {
+                width: 100%;
+                height: auto;
+                padding: 1.5rem;
+            }
+
+            .map-container {
+                height: 70vh;
+            }
+        }
+
+        /* Current location marker style */
+        .current-location-marker {
+            background-color: #4361ee;
+            border: 3px solid white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            box-shadow: 0 0 0 3px #4361ee;
+        }
+
+        .current-location-circle {
+            background-color: transparent;
+            border: 2px solid #4361ee;
+            border-radius: 50%;
+            opacity: 0.3;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="form-container">
+            <div class="logo">
+                <span class="logo-icon">🚦</span>
+                <h1>Traffic Navigator</h1>
+            </div>
+            
+            <form action="/" method="POST">
+                <div class="form-group">
+                    <label>Starting Point:</label>
+                    <div style="margin-bottom: 10px;">
+                        <input type="radio" id="use_current" name="location_type" value="current" checked 
+                               onchange="toggleStartLocation()">
+                        <label for="use_current">Current Location</label>
+                        
+                        <input type="radio" id="use_manual" name="location_type" value="manual" 
+                               onchange="toggleStartLocation()" style="margin-left: 15px;">
+                        <label for="use_manual">Enter Address</label>
+                    </div>
+                    
+                    <div id="manual_location_group" style="display: none; margin-top: 10px;">
+                        <input type="text" id="start_address" name="start_address" 
+                               placeholder="Enter starting address">
+                    </div>
+                    
+                    <input type="hidden" id="use_current_location" name="use_current_location" value="true">
+                </div>
+
+                <div class="form-group">
+                    <label for="destination">Destination:</label>
+                    <input type="text" id="destination" name="destination" placeholder="Enter destination (e.g., Gateway of India)" required>
+                    <input type="hidden" id="lat1" name="lat1">
+                    <input type="hidden" id="lng1" name="lng1">
+                </div>
+
+                <div class="form-group">
+                    <label for="vehicle_type">Vehicle Type:</label>
+                    <select name="vehicle_type" id="vehicle_type">
+                        <option value="car">Car 🚗</option>
+                        <option value="bicycle">Bicycle 🚲</option>
+                        <option value="foot">Walking 🚶</option>
+                    </select>
+                </div>
+
+                <div class="button-group">
+                    <button type="submit" class="btn btn-primary">
+                        <span>Navigate</span>
+                    </button>
+                    <button type="button" class="btn btn-clear" onclick="clearForm()">
+                        🗑️
+                    </button>
+                </div>
+            </form>
+
+            {% if durations %}
+            <div class="travel-info">
+                <h4 style="margin:0 0 10px 0; font-size:1.1rem;">Estimated Travel Times</h4>
+                {% for duration in durations %}
+                <div style="margin: 5px 0; padding: 8px; background: rgba(255,255,255,0.1); border-radius: 4px;">
+                    {{ duration }}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="map-container" id="map">
+            {% if map_html %}
+            {{ map_html | safe }}
+            {% endif %}
+        </div>
+    </div>
+
+    {% if map_html %}
+    <div class="traffic-legend">
+        <h4>Traffic Conditions</h4>
+        <div class="legend-item"><span class="legend-color" style="background: #FF0000;"></span> Heavy Traffic</div>
+        <div class="legend-item"><span class="legend-color" style="background: #FF4500;"></span> Slow Traffic</div>
+        <div class="legend-item"><span class="legend-color" style="background: #FFA500;"></span> Moderate Traffic</div>
+        <div class="legend-item"><span class="legend-color" style="background: #00FF00;"></span> Free Flow</div>
+        <div class="legend-item"><span class="legend-color" style="background: #0000FF;"></span> Faster Than Free Flow</div>
+    </div>
+    {% endif %}
+
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script>
+        // Global map variable
+        let map;
+    
+        // Enhanced geolocation with better error handling and accuracy
+        async function getCurrentLocation() {
+            return new Promise((resolve, reject) => {
+                if (!navigator.geolocation) {
+                    console.error("Geolocation is not supported by this browser");
+                    reject(new Error("Geolocation not supported"));
+                    return;
+                }
+    
+                // First try: High accuracy with short timeout
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        handlePositionSuccess(position, resolve);
+                    },
+                    (error) => {
+                        console.warn("High accuracy attempt failed:", error.message);
+                        // Second try: Lower accuracy with longer timeout
+                        navigator.geolocation.getCurrentPosition(
+                            (position) => {
+                                handlePositionSuccess(position, resolve);
+                            },
+                            (error) => {
+                                console.error("All geolocation attempts failed:", error.message);
+                                handleGeolocationError(error, resolve);
+                            },
+                            {
+                                enableHighAccuracy: false,
+                                timeout: 10000,
+                                maximumAge: 0
+                            }
+                        );
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 5000,
+                        maximumAge: 0
+                    }
+                );
+            });
+        }
+    
+        function handlePositionSuccess(position, resolve) {
+            const coords = {
+                lat: position.coords.latitude,
+                lng: position.coords.longitude,
+                accuracy: position.coords.accuracy,
+                timestamp: new Date(position.timestamp)
+            };
+            
+            console.log("Geolocation success:", {
+                coordinates: coords,
+                accuracy: `${coords.accuracy} meters`,
+                source: position.coords.altitude ? "GPS" : "Network"
+            });
+    
+            // Update form fields
+            document.getElementById('lat1').value = coords.lat;
+            document.getElementById('lng1').value = coords.lng;
+            
+            // Zoom to current location if map exists
+            if (map && window.currentLocationMarker && window.locationCircle) {
+                map.setView([coords.lat, coords.lng], 15); // Zoom level 15
+                window.currentLocationMarker.setLatLng([coords.lat, coords.lng]);
+                window.locationCircle.setLatLng([coords.lat, coords.lng]);
+            }
+            
+            resolve(coords);
+            
+            // Show accuracy to user
+            showLocationAccuracy(coords.accuracy);
+        }
+    
+        function handleGeolocationError(error, resolve) {
+            const errorMessages = {
+                1: "Permission denied - Please enable location services",
+                2: "Position unavailable - Couldn't determine your location",
+                3: "Timeout - Location request took too long"
+            };
+            
+            const userMessage = errorMessages[error.code] || "Unable to determine your location";
+            alert(userMessage);
+            
+            // Fallback to Mumbai coordinates
+            const fallback = { lat: 19.0760, lng: 72.8777, accuracy: 50000, isFallback: true };
+            document.getElementById('lat1').value = fallback.lat;
+            document.getElementById('lng1').value = fallback.lng;
+            
+            resolve(fallback);
+        }
+    
+        function showLocationAccuracy(accuracy) {
+            let accuracyElement = document.getElementById('accuracy-feedback');
+            if (!accuracyElement) {
+                accuracyElement = document.createElement('div');
+                accuracyElement.id = 'accuracy-feedback';
+                accuracyElement.style.marginTop = '10px';
+                accuracyElement.style.fontSize = '0.9rem';
+                document.querySelector('.form-group').appendChild(accuracyElement);
+            }
+            
+            if (accuracy < 50) {
+                accuracyElement.textContent = "High accuracy location (GPS)";
+                accuracyElement.style.color = "green";
+            } else if (accuracy < 1000) {
+                accuracyElement.textContent = "Moderate accuracy (Wi-Fi/Cell)";
+                accuracyElement.style.color = "orange";
+            } else {
+                accuracyElement.textContent = "Low accuracy (approximate)";
+                accuracyElement.style.color = "red";
+            }
+        }
+    
+        // Continuous position watching
+        let watchId = null;
+        function startWatchingPosition() {
+            if (watchId) return; // Already watching
+            
+            if (navigator.geolocation) {
+                watchId = navigator.geolocation.watchPosition(
+                    (position) => {
+                        console.log("Position updated:", position.coords);
+                        document.getElementById('lat1').value = position.coords.latitude;
+                        document.getElementById('lng1').value = position.coords.longitude;
+                        
+                        if (map && window.currentLocationMarker && window.locationCircle) {
+                            const newLatLng = [position.coords.latitude, position.coords.longitude];
+                            map.setView(newLatLng, map.getZoom()); // Keep current zoom level
+                            window.currentLocationMarker.setLatLng(newLatLng);
+                            window.locationCircle.setLatLng(newLatLng);
+                        }
+                    },
+                    (error) => {
+                        console.error("Position watch error:", error);
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        maximumAge: 30000,
+                        timeout: 10000
+                    }
+                );
+            }
+        }
+    
+        function stopWatchingPosition() {
+            if (watchId) {
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+            }
+        }
+    
+        function toggleStartLocation() {
+            const useCurrent = document.getElementById('use_current').checked;
+            const manualGroup = document.getElementById('manual_location_group');
+            const useCurrentField = document.getElementById('use_current_location');
+            
+            manualGroup.style.display = useCurrent ? 'none' : 'block';
+            useCurrentField.value = useCurrent ? 'true' : 'false';
+            
+            if (useCurrent) {
+                // Refresh current location when switching back
+                getCurrentLocation();
+                startWatchingPosition();
+            } else {
+                stopWatchingPosition();
+            }
+        }
+    
+        function initMap() {
+            // Create map with default view (will be updated when location is found)
+            map = L.map('map').setView([19.0760, 72.8777], 13); // Default to Mumbai
+    
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(map);
+    
+            // Create marker with blue border (position will be updated when location is found)
+            window.currentLocationMarker = L.circleMarker([19.0760, 72.8777], {
+                radius: 10,
+                color: '#4361ee',
+                fillColor: '#4361ee',
+                fillOpacity: 1,
+                weight: 3,
+                className: 'current-location-marker'
+            }).addTo(map).bindPopup("Your Location");
+            
+            // Add blue circle around the marker
+            window.locationCircle = L.circle([19.0760, 72.8777], {
+                radius: 30,
+                color: '#4361ee',
+                fillColor: '#4361ee',
+                fillOpacity: 0.1,
+                weight: 2,
+                className: 'current-location-circle'
+            }).addTo(map);
+        }
+    
+        function clearForm() {
+            document.getElementById('lat1').value = '';
+            document.getElementById('lng1').value = '';
+            document.getElementById('destination').value = '';
+            document.getElementById('vehicle_type').selectedIndex = 0;
+            document.getElementById('use_current').checked = true;
+            document.getElementById('use_manual').checked = false;
+            document.getElementById('manual_location_group').style.display = 'none';
+            document.getElementById('use_current_location').value = 'true';
+            document.getElementById('start_address').value = '';
+            
+            // Refresh current location
+            getCurrentLocation();
+            startWatchingPosition();
+        }
+    
+        // Initialize when page loads
+        window.addEventListener('DOMContentLoaded', async () => {
+            try {
+                // Check if map is already rendered by Flask
+                const mapContainer = document.getElementById('map');
+                if (mapContainer.children.length === 0) {
+                    initMap();
+                }
+                
+                // Get current location and update map
+                const location = await getCurrentLocation();
+                
+                // If we have a good location, zoom to it
+                if (location && !location.isFallback) {
+                    if (map) {
+                        map.setView([location.lat, location.lng], 15); // Zoom level 15
+                        window.currentLocationMarker.setLatLng([location.lat, location.lng]);
+                        window.locationCircle.setLatLng([location.lat, location.lng]);
+                    }
+                }
+                
+                // Start watching for position
+                startWatchingPosition();
+            } catch (error) {
+                console.error("Initialization error:", error);
+            }
+        });
+    </script>
+</body>
+
+</html>
